@@ -1,0 +1,6 @@
+Flask
+pymatgen
+plotly
+flask-cors
+gunicorn
+kaleido
