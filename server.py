@@ -1,17 +1,19 @@
-import os
 from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
 from pymatgen.ext.matproj import MPRester
 from pymatgen.analysis.phase_diagram import PhaseDiagram, PDPlotter
 import logging
+from io import BytesIO
+import os
 
 app = Flask(__name__)
 CORS(app)
-mpr = MPRester(os.environ['API_KEY'])
+
+# Configure logging to integrate with Gunicorn
 gunicorn_logger = logging.getLogger('gunicorn.error')
 app.logger.handlers = gunicorn_logger.handlers
 app.logger.setLevel(gunicorn_logger.level)
-app.logger.info(f"Running!")
+app.logger.info("Running!")
 
 @app.route('/generate_phase_diagram', methods=['POST'])
 def generate_phase_diagram():
@@ -20,25 +22,33 @@ def generate_phase_diagram():
     app.logger.info(f"Received /generate_phase_diagram request with elements: {elements}")
 
     if not elements:
-        app.logger.info("Returning an error as elements in /generate_phase_diagram were empty")
-        return jsonify({'error': 'API key and elements are required.'}), 400
+        app.logger.warning("Elements not provided in the request.")
+        return jsonify({'error': 'Elements are required.'}), 400
 
     try:
-        app.logger.info(f"Getting entries in chemsys for {elements} in /generate_phase_diagram")
-        entries = mpr.get_entries_in_chemsys(elements=elements)
+        app.logger.info(f"Fetching entries for elements: {elements}")
+        with MPRester(os.environ['API_KEY']) as mpr:
+            entries = mpr.get_entries_in_chemsys(elements=elements)
+
         if not entries:
-            app.logger.info(f"Returning an error as no enteries for {elements} were found in /generate_phase_diagram")
-            return jsonify({'error': 'No entries found for the given selections.'}), 404
-        app.logger.info(f"Getting plot for {elements} in /generate_phase_diagram")
+            app.logger.warning(f"No entries found for elements: {elements}")
+            return jsonify({'error': 'No entries found for the given elements.'}), 404
+
+        app.logger.info(f"Generating phase diagram for elements: {elements}")
         pd = PhaseDiagram(entries)
         plotter = PDPlotter(pd)
         fig = plotter.get_plot()
-        app.logger.info(f"Sending plot for {elements} in /generate_phase_diagram")
-        fig.write_image("figure.png", engine="kaleido")
-        return send_file("figure.png", mimetype='image/png')
+
+        # Use BytesIO to handle image in memory
+        img_io = BytesIO()
+        fig.write_image(img_io, format='png', engine='kaleido')
+        img_io.seek(0)
+
+        app.logger.info(f"Sending phase diagram for elements: {elements}")
+        return send_file(img_io, mimetype='image/png')
 
     except Exception as e:
-        app.logger.info(f"Reached error {e} in /generate_phase_diagram")
+        app.logger.error(f"Error generating phase diagram: {e}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
