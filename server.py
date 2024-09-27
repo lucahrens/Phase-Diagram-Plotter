@@ -30,7 +30,7 @@ def generate_phase_diagram():
         with MPRester(os.environ['API_KEY']) as mpr:
             entries = mpr.get_entries_in_chemsys(elements=elements)
 
-        if not entries:
+        if not entries or len(elements)!=3:
             app.logger.warning(f"No entries found for elements: {elements}")
             return jsonify({'error': 'No entries found for the given elements.'}), 404
 
