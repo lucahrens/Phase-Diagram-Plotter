@@ -21,9 +21,9 @@ def generate_phase_diagram():
     elements = data.get('elements')
     app.logger.info(f"Received /generate_phase_diagram request with elements: {elements}")
 
-    if not elements:
+    if not elements or len(elements)!=3:
         app.logger.warning("Elements not provided in the request.")
-        return jsonify({'error': 'Elements are required.'}), 400
+        return jsonify({'error': 'Please select exactly 3 elements, comma separated.'}), 400
 
     try:
         app.logger.info(f"Fetching entries for elements: {elements}")
