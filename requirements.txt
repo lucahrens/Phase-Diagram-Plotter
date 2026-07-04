@@ -4,3 +4,4 @@ plotly
 flask-cors
 gunicorn
 kaleido
+emmet-core
