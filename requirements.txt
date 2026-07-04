@@ -3,5 +3,5 @@ pymatgen
 plotly
 flask-cors
 gunicorn
-kaleido
+kaleido==0.2.1
 emmet-core
